@@ -7,6 +7,9 @@ var bodyParser = require('body-parser');
 
 var index = require('./routes/index');
 var trending = require('./routes/trending5');
+var register = require('./routes/register');
+var getPassword = require('./routes/getPassword');
+var login = require('./routes/login');
 
 var app = express();
 
@@ -21,8 +24,15 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+//no login needed
 app.use('/', index);
 app.use('/Trending5', trending);
+app.use('/register', register);
+app.use('/getPassword', getPassword);
+
+
+//login needed
+app.use('/login', login);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
