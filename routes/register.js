@@ -23,15 +23,11 @@ function checkInfo(info, res) {
 		return false;
 	}	
 		
-	let res = hasAllMandatoryInfo(info);
-	if(res === true) {
+	let manRes = hasAllMandatoryInfo(info);
+	if(manRes === true) {
 		let userName = info.Username;
 		let password = info.Password;
-		if(!/^[a-zA-Z]+$/.test(userName)) {
-			res.status(400).json({success: false, msg: 'Username can contain only letters'});
-			return false;
-		}
-		else if (userName.length < 3) {
+		if (userName.length < 3) {
 			res.status(400).json({success: false, msg: 'Username too short, must be at least 3 letters'});
 			return false;
 		}
@@ -39,10 +35,8 @@ function checkInfo(info, res) {
 			res.status(400).json({success: false, msg: 'Username too long, must be at most 8 letters'});
 			return false;
 		}
-		else if (!/^[a-zA-Z0-9]+$/.test(password) || 
-				 !/[a-zA-Z]/.test(password) ||
-				 !/[0-9]/.test(password)) {
-			res.status(400).json({success: false, msg: 'Password must contain only letters and number'});
+		else if(!/^[a-zA-Z]+$/.test(userName)) {
+			res.status(400).json({success: false, msg: 'Username can contain only letters'});
 			return false;
 		}
 		else if (password.length < 5) {
@@ -53,10 +47,16 @@ function checkInfo(info, res) {
 			res.status(400).json({success: false, msg: 'Password too long, must be at most 10 characters'});
 			return false;
 		}
+		else if (!/^[a-zA-Z0-9]+$/.test(password) || 
+				 !/[a-zA-Z]/.test(password) ||
+				 !/[0-9]/.test(password)) {
+			res.status(400).json({success: false, msg: 'Password must contain only letters and number'});
+			return false;
+		}
 		else return true;
 	}
 	else {
-		res.status(400).json({success: false, msg: `Missing ${res}`});
+		res.status(400).json({success: false, msg: `Missing ${manRes}`});
 		return false;
 	}
 }
@@ -75,6 +75,11 @@ function checkFavCategories(fav, res) {
 		return false;
 	}
 
+	if(fav.length == 0) {
+		res.status(400).json({success: false, msg: 'Must choose at least one favorite category'});
+		return false;
+	}
+
 	for(let i = 0; i < fav.length; i++) {
 		if(!isLegalCategory(fav[i])) {
 			res.status(400).json({success: false, msg: 'Ilegall category id'});
@@ -85,8 +90,7 @@ function checkFavCategories(fav, res) {
 }
 
 function isLegalCategory(x) {
-	let categories = ['1', '9', '10', '11', '12', '13', '14', '15', '37', '38', '39', '4912'
-					  '4915', '4916', '4918', '4919', '4920', '4971'];
+	let categories = ['1', '9', '10', '11', '12', '13', '14', '15', '37', '38', '39', '4912', '4915', '4916', '4918', '4919', '4920', '4971'];
 	let str_x = x + "";
 	return categories.includes(str_x);
 }
