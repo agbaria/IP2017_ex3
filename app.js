@@ -29,10 +29,9 @@ app.use('/', index);
 app.use('/Trending5', trending);
 app.use('/register', register);
 app.use('/getPassword', getPassword);
-
+app.use('/login', login);
 
 //login needed
-app.use('/login', login);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
