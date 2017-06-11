@@ -4,12 +4,25 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var check = require('./utils/typeCheck');
+var db = require('../utils/dbUtils');
 
+//routes handlers
 var index = require('./routes/index');
 var trending = require('./routes/trending5');
 var register = require('./routes/register');
+var getSecQues = require('./routes/getSecQues');
 var getPassword = require('./routes/getPassword');
 var login = require('./routes/login');
+var newGames = require('./routes/getNewGames');
+var getGbyC = require('./routes/getGamesByCategory');
+var getGbyN = require('./routes/getGamesByName');
+var getGbyCN = require('./routes/getGamesByCompanyName');
+var getGbyID = require('./routes/getGameByID');
+var getRecommended = require('./routes/getRecommendedGames');
+var getUserOrders = require('./routes/getOrders');
+var getUserOrder = require('./routes/getOrder');
+var makeOrder = require('./routes/makeOrder');
 
 var app = express();
 
@@ -22,33 +35,54 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+//app.use(express.static(path.join(__dirname, 'public')));
 
 //no login needed
 app.use('/', index);
 app.use('/Trending5', trending);
-app.use('/register', register);
-app.use('/getPassword', getPassword);
-app.use('/login', login);
+app.use('/Register', register);
+app.use('/GetSecurityQuestions', getSecQues);
+app.use('/GetPassword', getPassword);
+app.use('/Login', login);
+app.use('/NewGames', newGames);
+app.use('/GetGamesByCategory', getGbyC);
+app.use('/SearchByName', getGbyN);
+app.use('/SearchByCompanyName', getGbyCN);
+app.use('/GetGame', getGbyID);
 
 //login needed
+app.use(function(req, res, next) {
+    let username = req.body.username;
+    if(check.checkUsername(username))
+        res.status(400).json({success: false, msg: 'Illegal username'});
+    if(!db.isLogedIn(username))
+        res.status(400).json({success: false, msg: 'User is not logged in'});
+    next();
+});
+
+app.use('/GetRecommendedGames', getRecommended);
+app.use('/GetUserOrders', getUserOrders);
+app.use('/GetUserOrder', getUserOrder);
+app.use('/MakeOrder', makeOrder);
+
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
-  var err = new Error('Not Found');
-  err.status = 404;
-  next(err);
+    var err = new Error('Not Found');
+    err.status = 404;
+    next(err);
 });
 
 // error handler
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+    // set locals, only providing error in development
+    res.locals.message = err.message;
+    res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
+    // render the error page
+    res.status(err.status || 500);
+    res.render('error');
 });
 
 module.exports = app;

@@ -1,8 +1,6 @@
 var consts = require('./consts');
 var check = new Object();
 
-
-
 check.checkUsername = function(username) {
     if (typeof username !== 'string')
         return consts.wrongType;

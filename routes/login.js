@@ -5,8 +5,8 @@ var express = require('express');
 var router = express.Router();
 
 router.post('/', function(req, res, next) {
-	let username = req.body.Username;
-    let password = req.body.Password;
+	let username = req.body.username;
+    let password = req.body.password;
 
     if(checkParams(username, password)) {
         let loginRes = db.login(username, password);
@@ -14,10 +14,13 @@ router.post('/', function(req, res, next) {
             case consts.ok:
                 res.cookie('username', loginRes.username);
                 res.status(200).json({success: true, msg: 'success', firstname: loginRes.firstname, lastname: loginRes.lastname});
+                return;
             case consts.unexistUsername:
                 res.status(200).json({success: false, msg: 'Username doesn\'t exist'});
+                return;
             case consts.unexistPassword:
                 res.status(200).json({success: false, msg: 'Incorrect password'});
+                return;
         }
     }
     else {
