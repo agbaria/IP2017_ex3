@@ -1,15 +1,60 @@
-var db = require('../utils/dbUtils');
-var check = require('../utils/typeCheck');
-var consts = require('../utils/consts');
+var Connection = require('tedious').Connection;
+var Request = require('tedious').Request;
+var config = require('../utils/dbConfig');
 var express = require('express');
 var router = express.Router();
 
-router.get('/', function(req, res) {
+router.get('/', function(req, res, next) {
     let d = new Date();
     d.setMonth(d.getMonth() - 1);
     let epoch = d.getTime() / 1000;
-    let games = db.getGamesAfterDate(epoch); //games = [{id, title, releaseDate, posterUrl, price}, ...]
-    res.status(200).json({success: true, msg: 'success', newGames: games});
+    getNewGames(epoch, res, next);
 });
+
+function getNewGames(epoch, res, next) {
+    var connection = new Connection(config);
+    connection.on('connect', function(err) {
+        if (err) {
+            console.log(err)
+            next(err);
+        }
+        else {
+            request = new Request(
+				`SELECT GameID, GameTitle, ReleaseDate, PosterURL, Price FROM Games
+				WHERE ReleaseDate > ${epoch}
+                ORDER BY ReleaseDate ASC;`,
+                function(err, rowCount, rows) {
+                    if(!err) {
+                        if(rowCount) {
+                            let games = [];
+                            for(let i = 0; i < rowCount; i++) {
+								let row = rows[i];
+								var game = {
+									id: row[0].value,
+                                    title: row[1].value,
+                                    releaseDate: row[2].value,
+                                    PosterURL: row[3].value,
+                                    Price: row[4].value
+								};
+								games.push(game);
+							}
+
+                            res.status(200).json({success: true, msg: 'Success', games: games});
+                        }
+                        else {
+                            res.status(200).json({success: false, msg: 'No games from last month', games: []});
+                        }
+                    }
+                    else {
+                        console.log(err)
+                        next(err);
+                    }
+                }
+            );
+
+            connection.execSql(request);
+        }
+    });
+};
 
 module.exports = router;

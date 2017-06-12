@@ -6,25 +6,19 @@ var consts = require('../utils/consts');
 var express = require('express');
 var router = express.Router();
 
+
 router.post('/', function(req, res, next) {
     let username = req.body.username;
-    let ques = req.body.questions;
-    let ans = req.body.answers;
 
     if(check.checkUsername(username) === consts.ok) {
-        getPassword(username, ques, ans, res, next);
+        getUserQues(username, res, next);
     }
     else {
         res.status(400).json({success: false, msg: 'Illegal username'});
     }
 });
 
-function getPassword(uid, ques, ans, res, next) {
-    if(!checkQuesAns(ques, ans)) {
-        res.status(200).json({success: false, msg: 'Something wrong with questions/answers param'});
-        return;
-    }
-
+function getUserQues(username, res, next) {
     var connection = new Connection(config);
     connection.on('connect', function(err) {
         if (err) {
@@ -33,25 +27,16 @@ function getPassword(uid, ques, ans, res, next) {
         }
         else {
             request = new Request (
-                `SELECT QuesID, Answer FROM UserQuestions WHERE UserID='${uid}';`,
+                `SELECT QuesID FROM UserQuestions WHERE UserID='${username}';`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
-                            let q = [];
-                            let a = [];
+                            let ques = [];
                             for(let i = 0; i < rowCount; i++) {
                                 let row = rows[i];
-                                q.push(row[0].value);
-                                a.push(row[1].value);
+                                ques.push(row[0].value);
                             }
-
-                            let chRes = checkUserAnswers({q, a}, ques, ans);
-                            if(!chRes) {
-                                getActuallPassword(uid, res, next);
-                            }
-                            else {
-                                res.status(200).json({success: false, msg: chRes});
-                            }
+                            getQuestions(ques, res, next);
                         }
                         else {
                             res.status(200).json({success: false, msg: 'Username doesn\'t exist'});
@@ -69,36 +54,7 @@ function getPassword(uid, ques, ans, res, next) {
     });
 };
 
-function checkQuesAns(ques, ans) {
-    if(!Array.isArray(ques) || !Array.isArray(ans))
-        return false;
-    if(ques.length !== ans.length)
-        return false;
-    return true;
-}
-
-function checkUserAnswers(userSec, ques, ans) {
-    let qNum = userSec.q.length;
-    while(qNum != 0) {
-        let qID = userSec.q[qNum - 1];
-
-        let i = 0;
-        for(; i < ques.length; i++)
-            if(ques[i] == qID)
-                break;
-        
-        if(i < ques.length){
-            if(ans[i] === userSec.a[qNum - 1])
-                qNum--;
-            else
-                return `Wrong answer for question ${i + 1}`
-        }
-        else return `Missing answer for question: id=${qID}`;
-    }
-    return '';
-};
-
-function getActuallPassword(uid, res, next) {
+function getQuestions(ques, res, next) {
     var connection = new Connection(config);
     connection.on('connect', function(err) {
         if (err) {
@@ -106,16 +62,22 @@ function getActuallPassword(uid, res, next) {
             next(err);
         }
         else {
+
             request = new Request (
-                `SELECT Password FROM Users WHERE UserID='${uid}';`,
+                `SELECT QuesID, question FROM SecurityQuestions WHERE QuesID IN (-1, ${ques.join()});`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
-                            let pass = rows[0][0].value;
-                            res.status(200).json({success: true, msg: 'success', password: pass});
+                            let userQues = [];
+                            for(let i = 0; i < rowCount; i++) {
+                                let row = rows[i];
+                                userQues.push({id: row[0].value, question: row[1].value});
+                            }
+
+                            res.status(200).json({success: true, msg: 'success', questions: userQues});
                         }
                         else {
-                            res.status(200).json({success: false, msg: 'Username doesn\'t exist'});
+                            res.status(200).json({success: false, msg: 'User questions are **ed up'});
                         }
                     }
                     else {

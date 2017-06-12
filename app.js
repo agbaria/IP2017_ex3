@@ -5,13 +5,14 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var check = require('./utils/typeCheck');
-var db = require('../utils/dbUtils');
+var db = require('./utils/dbUtils');
 
 //routes handlers
 var index = require('./routes/index');
+var getAllQues = require('./routes/getAllQues')
 var trending = require('./routes/trending5');
 var register = require('./routes/register');
-var getSecQues = require('./routes/getSecQues');
+var getUserSecQues = require('./routes/getUserSecQues');
 var getPassword = require('./routes/getPassword');
 var login = require('./routes/login');
 var newGames = require('./routes/getNewGames');
@@ -20,8 +21,8 @@ var getGbyN = require('./routes/getGamesByName');
 var getGbyCN = require('./routes/getGamesByCompanyName');
 var getGbyID = require('./routes/getGameByID');
 var getRecommended = require('./routes/getRecommendedGames');
-var getUserOrders = require('./routes/getOrders');
-var getUserOrder = require('./routes/getOrder');
+var getUserOrders = require('./routes/getUserOrders');
+var getUserOrder = require('./routes/getUserOrder');
 var makeOrder = require('./routes/makeOrder');
 
 var app = express();
@@ -39,9 +40,10 @@ app.use(cookieParser());
 
 //no login needed
 app.use('/', index);
+app.use('/getAllQuestions', getAllQues)
 app.use('/Trending5', trending);
 app.use('/Register', register);
-app.use('/GetSecurityQuestions', getSecQues);
+app.use('/GetUserSecurityQuestions', getUserSecQues);
 app.use('/GetPassword', getPassword);
 app.use('/Login', login);
 app.use('/NewGames', newGames);
@@ -65,8 +67,6 @@ app.use('/GetUserOrders', getUserOrders);
 app.use('/GetUserOrder', getUserOrder);
 app.use('/MakeOrder', makeOrder);
 
-
-
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
     var err = new Error('Not Found');
@@ -76,13 +76,14 @@ app.use(function(req, res, next) {
 
 // error handler
 app.use(function(err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-    // render the error page
-    res.status(err.status || 500);
-    res.render('error');
+    if (!res.headersSent) {
+        res.locals.message = err.message;
+        res.locals.error = req.app.get('env') === 'development' ? err : {};
+        res.sendStatus(err.status || 500);
+    }
+    else {
+        res.end();
+    }     
 });
 
 module.exports = app;

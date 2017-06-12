@@ -1,4 +1,6 @@
-var db = require('../utils/dbUtils');
+var Connection = require('tedious').Connection;
+var Request = require('tedious').Request;
+var config = require('../utils/dbConfig');
 var check = require('../utils/typeCheck');
 var consts = require('../utils/consts');
 var express = require('express');
@@ -11,12 +13,7 @@ router.post('/', function(req, res, next) {
 	let ans = req.body.answers; //answers for security questions array
 
 	if(checkInfo(info, res) && checkFavCategories(fav, res) && checkQuesAns(ques, ans, res)) {
-		if(register(info, fav, ques, ans)) {
-			res.status(200).json({success: true, msg: 'User registered successfully'});
-		}
-		else {
-			res.status(500).json({success: false, msg: 'Internal Server Error'});
-		}
+		register(info, fav, ques, ans, res, next);
 	}
 });
 
@@ -28,8 +25,8 @@ function checkInfo(info, res) {
 	
 	let miss = isMissingMandatoryInfo(info);
 	if(!miss) {
-		let username = info.Username;
-		let password = info.Password;
+		let username = info.username;
+		let password = info.password;
 
 		switch(check.checkUsername(username)) {
 			case consts.wrongType:
@@ -70,9 +67,9 @@ function checkInfo(info, res) {
 }
 
 function isMissingMandatoryInfo(info) {
-	if(!info.hasOwnProperty('Username'))
+	if(!info.hasOwnProperty('username'))
 		return 'username';
-	if(!info.hasOwnProperty('Password'))
+	if(!info.hasOwnProperty('password'))
 		return 'password';
 	return '';
 }
@@ -132,9 +129,44 @@ function checkQuesAns(ques, ans, res) {
 	return true;
 }
 
-function register(info, fav, ques, ans) {
-	db.addUser(info, fav, ques, ans);
-	//TODO: implement add user, call db...
-}
+function register(info, fav, ques, ans, res, next) {
+	var connection = new Connection(config);
+    connection.on('connect', function(err) {
+        if (err) {
+            console.log(err)
+            next(err);
+        }
+        else {
+			let favQuery = '', quesQuery = '';
+			for(let i = 0; i < fav.length; i++)
+				favQuery += ` ('${info.username}', ${fav[i]})`;
+			for(let i = 0; i < ques.length; i++)
+				quesQuery += ` ('${info.username}', ${ques[i]}, '${ans[i]}')`
+
+            request = new Request(
+                `INSERT INTO users (UserID, Password, FirstName, LastName, Address, City, Country, Phone, Cellular, Mail, CreditCardNumber)
+				VALUES ('${info.username}', '${info.password}', '${info.firstname}', '${info.lastname}', '${info.address}', '${info.city}', '${info.country}', '${info.phone}', '${info.cellular}', '${info.mail}', '${info.credit}');
+				INSERT INTO UserCategories (UserID, CategoryID) VALUES ${favQuery};
+				INSERT INTO UserQuestions (UserID, QuesID, Answer) VALUES ${quesQuery};`,
+                function(err, rowCount, rows) {
+                    if(!err) {
+                        if(rowCount) {
+                            res.status(200).json({success: true, msg: 'User registered successfully'});
+                        }
+                        else {
+                            res.status(200).json({success: false, msg: 'User already exists'});
+                        }
+                    }
+                    else {
+						console.log(err)
+                        next(err);
+                    }
+                }
+            );
+
+            connection.execSql(request);
+        }
+    });
+};
 
 module.exports = router;

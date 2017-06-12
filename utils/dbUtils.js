@@ -6,29 +6,18 @@ var config = {
   password: 'khalefA2', // update me
   server: 'ip2017ex3.database.windows.net', // update me
   options: {
-      database: 'IP2017EX3DB' //update me
+      database: 'IP2017EX3DB',
+      rowCollectionOnRequestCompletion: true,
+      encrypt: true
   }
 }
 
-var connection = new Connection(config);
 var db = new Object();
 
-function connect(callback) {
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err)
-        }
-        else{
-            callback()
-        }
-    });
-}
-
 db.getTrending5 = function(ts) {
+    let prods = [];
 
     connect(function() {
-        console.log('Reading rows from the Table...');
-
         request = new Request(
             `SELECT TOP 5 GameID
             FROM Orders LEFT JOIN GamesInOrders
@@ -37,15 +26,10 @@ db.getTrending5 = function(ts) {
             GROUP BY GameID
             ORDER BY COUNT(GameID) ASC;`,
             function(err, rowCount, rows) {
+
                 console.log(rowCount + ' row(s) returned');
             }
         );
-
-        request.on('row', function(columns) {
-            columns.forEach(function(column) {
-                console.log("%s\t%s", column.metadata.colName, column.value);
-            });
-        });
 
         connection.execSql(request);
     });
@@ -94,9 +78,6 @@ db.isGame = function(gid) {
     return false;
 };
 
-db.getGameById = function(gid) {
-    return null;
-}; //game = {id, title, posterUrl, price}
 
 db.isLogedIn = function(username) {
     return false;

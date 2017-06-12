@@ -1,22 +1,60 @@
-var db = require('../utils/dbUtils');
+var Connection = require('tedious').Connection;
+var Request = require('tedious').Request;
+var config = require('../utils/dbConfig');
 var express = require('express');
 var router = express.Router();
 
-router.get('/:id', function(req, res) {
-    let cid = parseInt(req.params.id);
+router.get('/:id', function(req, res, next) {
+    let pid = parseInt(req.params.id);
     
-    if(!isNaN(cid)) {
-        if(db.isPlatform(cid)) {
-            let games = db.getGamesByPlatformId(cid); //games = [{id, title, posterUrl, price}, ...]
-            res.status(200).json({success: true, msg: 'success', games: games});
-        }
-        else {
-            res.status(200).json({success: false, msg: 'Category doesn\'t exist'});
-        }
+    if(!isNaN(pid)) {
+        getGamesByPlatformId(pid, res, next);
     }
     else {
         res.status(400).json({success: false, msg: 'Illegal category ID'});
     }
 });
+
+function getGamesByPlatformId(pid, res, next) {
+    var connection = new Connection(config);
+    connection.on('connect', function(err) {
+        if (err) {
+            console.log(err)
+            next(err);
+        }
+        else {
+            request = new Request(
+                `SELECT * from games WHERE PlatformId = ${pid};`,
+                function(err, rowCount, rows) {
+                    if(!err) {
+                        if(rowCount) {
+                            let games = [];
+                            for(let i = 0; i < rowCount; i++) {
+                                let row = rows[i];
+                                var game = {
+                                    id: row[0].value,
+                                    title: row[1].value,
+                                    PosterURL: row[5].value,
+                                    Price: row[8].value
+                                };
+                                games.push(game);
+                            }
+
+                            res.status(200).json({success: true, msg: 'success', games: games});
+                        }
+                        else {
+                            res.status(200).json({success: false, msg: 'Category doesn\'t exist'});
+                        }
+                    }
+                    else {
+                        next(err);
+                    }
+                }
+            );
+
+            connection.execSql(request);
+        }
+    });
+};
 
 module.exports = router;
