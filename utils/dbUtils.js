@@ -1,6 +1,54 @@
+var Connection = require('tedious').Connection;
+var Request = require('tedious').Request;
+
+var config = {
+  userName: 'agbaria', // update me
+  password: 'khalefA2', // update me
+  server: 'ip2017ex3.database.windows.net', // update me
+  options: {
+      database: 'IP2017EX3DB' //update me
+  }
+}
+
+var connection = new Connection(config);
 var db = new Object();
 
-db.getTrending5 = function() {
+function connect(callback) {
+    connection.on('connect', function(err) {
+        if (err) {
+            console.log(err)
+        }
+        else{
+            callback()
+        }
+    });
+}
+
+db.getTrending5 = function(ts) {
+
+    connect(function() {
+        console.log('Reading rows from the Table...');
+
+        request = new Request(
+            `SELECT TOP 5 GameID
+            FROM Orders LEFT JOIN GamesInOrders
+            ON Orders.OrderID = GamesInOrders.OrderID
+            WHERE ShipmentDate > ${ts}
+            GROUP BY GameID
+            ORDER BY COUNT(GameID) ASC;`,
+            function(err, rowCount, rows) {
+                console.log(rowCount + ' row(s) returned');
+            }
+        );
+
+        request.on('row', function(columns) {
+            columns.forEach(function(column) {
+                console.log("%s\t%s", column.metadata.colName, column.value);
+            });
+        });
+
+        connection.execSql(request);
+    });
     return null;
 }
 
