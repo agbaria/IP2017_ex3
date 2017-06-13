@@ -2,6 +2,7 @@
 
 start instructions:
 cd ip2017_ex3
+npm install
 npm start
 
 users:  username - password
