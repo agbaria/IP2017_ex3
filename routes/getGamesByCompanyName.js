@@ -33,9 +33,9 @@ function getGamesByPublisher(name, res, next) {
                                 var game = {
                                     id: row[0].value,
                                     title: row[1].value,
-                                    PosterURL: row[5].value,
-                                    Publisher: row[7].value,
-                                    Price: row[8].value
+                                    posterURL: row[5].value,
+                                    publisher: row[7].value,
+                                    price: row[8].value
                                 };
                                 games.push(game);
                             }

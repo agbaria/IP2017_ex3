@@ -40,7 +40,7 @@ app.use(cookieParser());
 
 //no login needed
 app.use('/', index);
-app.use('/getAllQuestions', getAllQues)
+app.use('/GetAllQuestions', getAllQues)
 app.use('/Trending5', trending);
 app.use('/Register', register);
 app.use('/GetUserSecurityQuestions', getUserSecQues);

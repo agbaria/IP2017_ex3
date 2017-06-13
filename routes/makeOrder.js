@@ -42,12 +42,12 @@ router.post('/', function(req, res) {
 function checkProducts(prods) {
     for(let i = 0; i < prods.length; i++) {
         if(prods[i] !== null && typeof prods[i] === 'object') {
-            if(!prods[i].hasOwnProperty('gameID') || !prods[i].hasOwnProperty('quantity'))
+            if(!prods[i].hasOwnProperty('gameId') || !prods[i].hasOwnProperty('quantity'))
                 return `Missing property in game: index=${i}`
-            if(!db.isGame(prods[i].gameID))
-                return `Game ${prods[i].gameID} doesn't exist`;
-            if(!db.inStock(prods[i].gameID, prods[i].quantity))
-                return `Game ${prods[i].gameID} quantity isn't in stock`
+            if(!db.isGame(prods[i].gameId))
+                return `Game ${prods[i].gameId} doesn't exist`;
+            if(!db.inStock(prods[i].gameId, prods[i].quantity))
+                return `Game ${prods[i].gameId} quantity isn't in stock`
         }
         else return `Wrong game type: index=${i}`;
     }
@@ -60,13 +60,13 @@ function finishOrder(uid, prods, shippingDate, curr, res) {
     let oid = db.addOrder(uid, orderDate, shippingDate, curr, total);
     updateProducts(prods, oid);
 
-    res.status(200).json({success: true, msg: 'success', order: {orderID: oid, products: prods, shippingDay: shippingDate, currency: curr, totalAmount: total}});
+    res.status(200).json({success: true, msg: 'success', order: {id: oid, products: prods, shippingDay: shippingDate, currency: curr, totalAmount: total}});
 };
 
 function calcTotalAmount(prods) {
     let total = 0;
     for(let i = 0; i < prods.length; i++) {
-        let p = db.getGamePrice(prods[i].gameID);
+        let p = db.getGamePrice(prods[i].gameId);
         total += p * prods[i].quantity;
     }
     return total;
@@ -74,8 +74,8 @@ function calcTotalAmount(prods) {
 
 function updateProducts(prods, oid) {
     for(let i = 0; i < prods.length; i++) {
-        db.reduceStockAmount(prods[i].gameID, prods[i].quantity);
-        db.addOrderProduct(oid, prods[i].gameID, prods[i].quantity);
+        db.reduceStockAmount(prods[i].gameId, prods[i].quantity);
+        db.addOrderProduct(oid, prods[i].gameId, prods[i].quantity);
     }
 };
 

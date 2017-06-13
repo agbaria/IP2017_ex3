@@ -36,14 +36,14 @@ function getGameById(gid, res, next) {
                             var game = {
                                 id: gid,
                                 title: row[1].value,
-                                PlatformId: row[2].value,
-                                ReleaseDate: row[3].value,
-                                Overview: row[4].value,
-                                PosterURL: row[5].value,
-                                ESRB: row[6].value,
-                                Publisher: row[7].value,
-                                Price: row[8].value,
-                                StokAmount: row[9].value,
+                                platformId: row[2].value,
+                                releaseDate: row[3].value,
+                                overview: row[4].value,
+                                posterURL: row[5].value,
+                                esrb: row[6].value,
+                                publisher: row[7].value,
+                                price: row[8].value,
+                                stokAmount: row[9].value,
                                 genres: genres
                             };
 

@@ -34,8 +34,8 @@ function getGamesByName(name, res, next) {
                                 var game = {
                                     id: row[0].value,
                                     title: row[1].value,
-                                    PosterURL: row[5].value,
-                                    Price: row[8].value
+                                    posterURL: row[5].value,
+                                    price: row[8].value
                                 };
                                 games.push(game);
                             }

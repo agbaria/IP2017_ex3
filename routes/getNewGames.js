@@ -33,8 +33,8 @@ function getNewGames(epoch, res, next) {
 									id: row[0].value,
                                     title: row[1].value,
                                     releaseDate: row[2].value,
-                                    PosterURL: row[3].value,
-                                    Price: row[4].value
+                                    posterURL: row[3].value,
+                                    price: row[4].value
 								};
 								games.push(game);
 							}
