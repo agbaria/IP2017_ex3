@@ -1,5 +1,6 @@
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
 var config = require('../utils/dbConfig');
 var check = require('../utils/typeCheck');
 var consts = require('../utils/consts');
@@ -35,7 +36,7 @@ function login(username, password, res, next) {
         }
         else {
             request = new Request (
-                `SELECT UserID FROM Users WHERE UserID='${username}' AND Password='${password}';`,
+                `SELECT UserID FROM Users WHERE UserID=@username AND Password=@password;`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
@@ -52,6 +53,8 @@ function login(username, password, res, next) {
                 }
             );
 
+            request.addParameter('username', TYPES.VarChar, username);
+            request.addParameter('password', TYPES.VarChar, password);
             connection.execSql(request);
         }
     });
@@ -66,8 +69,8 @@ function actuallyLogin(username, res, next) {
         }
         else {
             request = new Request(
-                `UPDATE Users SET LogedIn=1 WHERE UserID='${username}';
-                SELECT FirstName, LastName FROM Users WHERE UserID='${username}';`,
+                `UPDATE Users SET LogedIn=1 WHERE UserID=@username1;
+                SELECT FirstName, LastName FROM Users WHERE UserID=@username2;`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
@@ -85,6 +88,8 @@ function actuallyLogin(username, res, next) {
                 }
             );
 
+            request.addParameter('username1', TYPES.VarChar, username);
+            request.addParameter('username2', TYPES.VarChar, username);
             connection.execSql(request);
         }
     });

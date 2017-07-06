@@ -1,5 +1,6 @@
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
 var config = require('../utils/dbConfig');
 var express = require('express');
 var router = express.Router();
@@ -24,7 +25,7 @@ function getGamesByName(name, res, next) {
         }
         else {
             request = new Request(
-                `SELECT * from games WHERE GameTitle LIKE '%${name}%';`,
+                `SELECT * from games WHERE GameTitle LIKE @name;`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
@@ -52,6 +53,7 @@ function getGamesByName(name, res, next) {
                 }
             );
 
+            request.addParameter('name', TYPES.VarChar, `%${name}%`);
             connection.execSql(request);
         }
     });

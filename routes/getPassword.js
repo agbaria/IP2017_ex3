@@ -1,5 +1,6 @@
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
 var config = require('../utils/dbConfig');
 var check = require('../utils/typeCheck');
 var consts = require('../utils/consts');
@@ -33,7 +34,7 @@ function getPassword(uid, ques, ans, res, next) {
         }
         else {
             request = new Request (
-                `SELECT QuesID, Answer FROM UserQuestions WHERE UserID='${uid}';`,
+                `SELECT QuesID, Answer FROM UserQuestions WHERE UserID=@uid;`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
@@ -64,6 +65,7 @@ function getPassword(uid, ques, ans, res, next) {
                 }
             );
 
+            request.addParameter('uid', TYPES.VarChar, uid);
             connection.execSql(request);
         }
     });
@@ -107,7 +109,7 @@ function getActuallPassword(uid, res, next) {
         }
         else {
             request = new Request (
-                `SELECT Password FROM Users WHERE UserID='${uid}';`,
+                `SELECT Password FROM Users WHERE UserID=@uid;`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
@@ -125,6 +127,7 @@ function getActuallPassword(uid, res, next) {
                 }
             );
 
+            request.addParameter('uid', TYPES.VarChar, uid);
             connection.execSql(request);
         }
     });
