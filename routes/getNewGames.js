@@ -1,5 +1,6 @@
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
 var config = require('../utils/dbConfig');
 var express = require('express');
 var router = express.Router();
@@ -21,7 +22,7 @@ function getNewGames(epoch, res, next) {
         else {
             request = new Request(
 				`SELECT GameID, GameTitle, ReleaseDate, PosterURL, Price FROM Games
-				WHERE ReleaseDate > ${epoch}
+				WHERE ReleaseDate > @epoch
                 ORDER BY ReleaseDate ASC;`,
                 function(err, rowCount, rows) {
                     if(!err) {
@@ -52,6 +53,7 @@ function getNewGames(epoch, res, next) {
                 }
             );
 
+            request.addParameter('epoch', TYPES.Int, epoch);
             connection.execSql(request);
         }
     });

@@ -1,5 +1,6 @@
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
 var config = require('../utils/dbConfig');
 var check = require('../utils/typeCheck');
 var consts = require('../utils/consts');
@@ -27,7 +28,7 @@ function getUserQues(username, res, next) {
         }
         else {
             request = new Request (
-                `SELECT QuesID FROM UserQuestions WHERE UserID='${username}';`,
+                `SELECT QuesID FROM UserQuestions WHERE UserID=@username;`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
@@ -49,6 +50,7 @@ function getUserQues(username, res, next) {
                 }
             );
 
+            request.addParameter('username', TYPES.VarChar, username);
             connection.execSql(request);
         }
     });
@@ -64,7 +66,7 @@ function getQuestions(ques, res, next) {
         else {
 
             request = new Request (
-                `SELECT QuesID, question FROM SecurityQuestions WHERE QuesID IN (-1, ${ques.join()});`,
+                `SELECT QuesID, question FROM SecurityQuestions WHERE QuesID IN (${ques.join()});`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {

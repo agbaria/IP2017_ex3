@@ -1,5 +1,6 @@
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
 var config = require('../utils/dbConfig');
 var express = require('express');
 var router = express.Router();
@@ -23,8 +24,8 @@ function getGameById(gid, res, next) {
         }
         else {
             request = new Request(
-                `SELECT * from games WHERE gameid = ${gid};
-                SELECT * FROM Genres WHERE gameid = ${gid};`,
+                `SELECT * FROM games WHERE gameid = @id1;
+                SELECT * FROM Genres WHERE gameid = @id2;`,
                 function(err, rowCount, rows) {
                     if(!err) {
                         if(rowCount) {
@@ -59,6 +60,8 @@ function getGameById(gid, res, next) {
                 }
             );
 
+            request.addParameter('id1', TYPES.Int, gid);
+            request.addParameter('id2', TYPES.Int, gid);
             connection.execSql(request);
         }
     });
