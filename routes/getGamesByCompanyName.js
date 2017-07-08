@@ -1,7 +1,5 @@
-var Connection = require('tedious').Connection;
-var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
-var config = require('../utils/dbConfig');
+var utils = require('../utils/dbUtils');
 var express = require('express');
 var router = express.Router();
 
@@ -16,47 +14,33 @@ router.get('/:name', function(req, res, next) {
 });
 
 function getGamesByPublisher(name, res, next) {
-    var connection = new Connection(config);
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err);
-            next(err);
+    let query = 'SELECT * from games WHERE Publisher LIKE @name;';
+    let params = [{name: 'name', type: TYPES.VarChar, value: `%${name}%`}];
+    
+    utils.Select(query, params).then(function(ans) {
+        let rowCount = ans.count;
+        let rows = ans.rows;
+
+        if(rowCount) {
+            let games = [];
+            for(let i = 0; i < rowCount; i++) {
+                let row = rows[i];
+                var game = {
+                    id: row[0].value,
+                    title: row[1].value,
+                    posterURL: row[5].value,
+                    publisher: row[7].value,
+                    price: row[8].value
+                };
+                games.push(game);
+            }
+            
+            res.status(200).json({success: true, msg: 'success', games: games});
         }
         else {
-            request = new Request(
-                `SELECT * from games WHERE Publisher LIKE @name;`,
-                function(err, rowCount, rows) {
-                    if(!err) {
-                        if(rowCount) {
-                            let games = [];
-                            for(let i = 0; i < rowCount; i++) {
-                                let row = rows[i];
-                                var game = {
-                                    id: row[0].value,
-                                    title: row[1].value,
-                                    posterURL: row[5].value,
-                                    publisher: row[7].value,
-                                    price: row[8].value
-                                };
-                                games.push(game);
-                            }
-                            
-                            res.status(200).json({success: true, msg: 'success', games: games});
-                        }
-                        else {
-                            res.status(200).json({success: false, msg: 'No matching companies found'});
-                        }
-                    }
-                    else {
-                        next(err);
-                    }
-                }
-            );
-
-            request.addParameter('name', TYPES.VarChar, `%${name}%`);
-            connection.execSql(request);
+            res.status(200).json({success: false, msg: 'No matching companies found'});
         }
-    });
+    }).catch(next);
 };
 
 module.exports = router;

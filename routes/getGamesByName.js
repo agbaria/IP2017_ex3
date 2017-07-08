@@ -1,13 +1,10 @@
-var Connection = require('tedious').Connection;
-var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
-var config = require('../utils/dbConfig');
+var utils = require('../utils/dbUtils');
 var express = require('express');
 var router = express.Router();
 
 router.get('/:name', function(req, res, next) {
     let name = req.params.name;
-    console.log(name)
     if(name.length < 50) {
         getGamesByName(name, res, next);
     }
@@ -17,46 +14,31 @@ router.get('/:name', function(req, res, next) {
 });
 
 function getGamesByName(name, res, next) {
-    var connection = new Connection(config);
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err);
-            next(err);
+    let query = 'SELECT * from games WHERE GameTitle LIKE @name;';
+    let params = [{name: 'name', type: TYPES.VarChar, value: `%${name}%`}];
+    
+    utils.Select(query, params).then(function(ans) {
+        let rowCount = ans.count;
+        let rows = ans.rows;
+
+        if(rowCount) {
+            let games = [];
+            for(let i = 0; i < rowCount; i++) {
+                let row = rows[i];
+                var game = {
+                    id: row[0].value,
+                    title: row[1].value,
+                    posterURL: row[5].value,
+                    price: row[8].value
+                };
+                games.push(game);
+            }
+            res.status(200).json({success: true, msg: 'success', games: games});
         }
         else {
-            request = new Request(
-                `SELECT * from games WHERE GameTitle LIKE @name;`,
-                function(err, rowCount, rows) {
-                    if(!err) {
-                        if(rowCount) {
-                            let games = [];
-                            for(let i = 0; i < rowCount; i++) {
-                                let row = rows[i];
-                                var game = {
-                                    id: row[0].value,
-                                    title: row[1].value,
-                                    posterURL: row[5].value,
-                                    price: row[8].value
-                                };
-                                games.push(game);
-                            }
-                            
-                            res.status(200).json({success: true, msg: 'success', games: games});
-                        }
-                        else {
-                            res.status(200).json({success: false, msg: 'No matching games found'});
-                        }
-                    }
-                    else {
-                        next(err);
-                    }
-                }
-            );
-
-            request.addParameter('name', TYPES.VarChar, `%${name}%`);
-            connection.execSql(request);
+            res.status(200).json({success: false, msg: 'No matching games found'});
         }
-    });
+    }).catch(next);
 };
 
 module.exports = router;
