@@ -1,7 +1,5 @@
-var Connection = require('tedious').Connection;
-var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
-var config = require('../utils/dbConfig');
+var utils = require('../utils/dbUtils');
 var check = require('../utils/typeCheck');
 var consts = require('../utils/consts');
 var express = require('express');
@@ -26,49 +24,34 @@ function getPassword(uid, ques, ans, res, next) {
         return;
     }
 
-    var connection = new Connection(config);
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err)
-            next(err);
+    let query = 'SELECT QuesID, Answer FROM UserQuestions WHERE UserID=@uid;';
+    let params = [{name: 'uid', type: TYPES.VarChar, value: uid}];
+    
+    utils.Select(query, params).then(function(ans) {
+        let rowCount = ans.count;
+        let rows = ans.rows;
+
+        if(rowCount) {
+            let q = [];
+            let a = [];
+            for(let i = 0; i < rowCount; i++) {
+                let row = rows[i];
+                q.push(row[0].value);
+                a.push(row[1].value);
+            }
+
+            let chRes = checkUserAnswers({q, a}, ques, ans);
+            if(!chRes) {
+                getActuallPassword(uid, res, next);
+            }
+            else {
+                res.status(200).json({success: false, msg: chRes});
+            }
         }
         else {
-            request = new Request (
-                `SELECT QuesID, Answer FROM UserQuestions WHERE UserID=@uid;`,
-                function(err, rowCount, rows) {
-                    if(!err) {
-                        if(rowCount) {
-                            let q = [];
-                            let a = [];
-                            for(let i = 0; i < rowCount; i++) {
-                                let row = rows[i];
-                                q.push(row[0].value);
-                                a.push(row[1].value);
-                            }
-
-                            let chRes = checkUserAnswers({q, a}, ques, ans);
-                            if(!chRes) {
-                                getActuallPassword(uid, res, next);
-                            }
-                            else {
-                                res.status(200).json({success: false, msg: chRes});
-                            }
-                        }
-                        else {
-                            res.status(200).json({success: false, msg: 'Username doesn\'t exist'});
-                        }
-                    }
-                    else {
-						console.log(err)
-                        next(err);
-                    }
-                }
-            );
-
-            request.addParameter('uid', TYPES.VarChar, uid);
-            connection.execSql(request);
+            res.status(200).json({success: false, msg: 'Username doesn\'t exist'});
         }
-    });
+    }).catch(next);
 };
 
 function checkQuesAns(ques, ans) {
@@ -101,36 +84,21 @@ function checkUserAnswers(userSec, ques, ans) {
 };
 
 function getActuallPassword(uid, res, next) {
-    var connection = new Connection(config);
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err)
-            next(err);
+    let query = 'SELECT Password FROM Users WHERE UserID=@uid;';
+    let params = [{name: 'uid', type: TYPES.VarChar, value: uid}];
+    
+    utils.Select(query, params).then(function(ans) {
+        let rowCount = ans.count;
+        let rows = ans.rows;
+
+        if(rowCount) {
+            let pass = rows[0][0].value;
+            res.status(200).json({success: true, msg: 'success', password: pass});
         }
         else {
-            request = new Request (
-                `SELECT Password FROM Users WHERE UserID=@uid;`,
-                function(err, rowCount, rows) {
-                    if(!err) {
-                        if(rowCount) {
-                            let pass = rows[0][0].value;
-                            res.status(200).json({success: true, msg: 'success', password: pass});
-                        }
-                        else {
-                            res.status(200).json({success: false, msg: 'Username doesn\'t exist'});
-                        }
-                    }
-                    else {
-						console.log(err)
-                        next(err);
-                    }
-                }
-            );
-
-            request.addParameter('uid', TYPES.VarChar, uid);
-            connection.execSql(request);
+            res.status(200).json({success: false, msg: 'Username doesn\'t exist'});
         }
-    });
+    }).catch(next);
 };
 
 module.exports = router;

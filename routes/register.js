@@ -1,7 +1,5 @@
-var Connection = require('tedious').Connection;
-var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
-var config = require('../utils/dbConfig');
+var utils = require('../utils/dbUtils');
 var check = require('../utils/typeCheck');
 var consts = require('../utils/consts');
 var express = require('express');
@@ -131,77 +129,52 @@ function checkQuesAns(ques, ans, res) {
 }
 
 function register(info, fav, ques, ans, res, next) {
-	var connection = new Connection(config);
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err)
-            next(err);
-        }
-        else {
-            let request = new Request(
-                `INSERT INTO users (UserID, Password, FirstName, LastName, Address, City, Country, Phone, Cellular, Mail, CreditCardNumber)
-				VALUES (@username, @password, @firstname, @lastname, @address, @city, @country, @phone, @cellular, @mail, @credit);`,
-                function(err, rowCount, rows) {
-                    if(!err) {
-                        if(rowCount) {
-                            res.status(200).json({success: true, msg: 'User registered successfully'});
-							completeRegistration(info.username, fav, ques, ans);
-                        }
-                        else {
-                            res.status(200).json({success: false, msg: 'User already exists'});
-                        }
-                    }
-                    else {
-						console.log(err)
-                        next(err);
-                    }
-                }
-            );
+	let query = `INSERT INTO users (UserID, Password, FirstName, LastName, Address, City, Country, Phone, Cellular, Mail, CreditCardNumber)
+				 VALUES (@username, @password, @firstname, @lastname, @address, @city, @country, @phone, @cellular, @mail, @credit);`;
+	let params = addParams(info);
+    
+    utils.Select(query, params).then(function(ans) {
+        let rowCount = ans.count;
+        let rows = ans.rows;
 
-			request.addParameter('username', TYPES.VarChar, info.username);
-			request.addParameter('password', TYPES.VarChar, info.password);
-			request.addParameter('firstname', TYPES.VarChar, info.firstname);
-			request.addParameter('lastname', TYPES.VarChar, info.lastname);
-			request.addParameter('address', TYPES.VarChar, info.address);
-			request.addParameter('city', TYPES.VarChar, info.city);
-			request.addParameter('country', TYPES.VarChar, info.country);
-			request.addParameter('phone', TYPES.VarChar, info.phone);
-			request.addParameter('cellular', TYPES.VarChar, info.cellular);
-			request.addParameter('mail', TYPES.VarChar, info.mail);
-			request.addParameter('credit', TYPES.VarChar, info.credit);
-            connection.execSql(request);
-        }
-    });
+		if(rowCount) {
+			res.status(200).json({success: true, msg: 'User registered successfully'});
+			completeRegistration(info.username, fav, ques, ans);
+		}
+		else {
+			res.status(200).json({success: false, msg: 'User already exists'});
+		}
+	}).catch(next);
 };
 
+function addParams(info) {
+	let p = [];
+	p.push({name: 'username', type: TYPES.VarChar, value: info.username});
+	p.push({name: 'password', type: TYPES.VarChar, value: info.password});
+	p.push({name: 'firstname', type: TYPES.VarChar, value: info.firstname});
+	p.push({name: 'lastname', type: TYPES.VarChar, value: info.lastname});
+	p.push({name: 'address', type: TYPES.VarChar, value: info.address});
+	p.push({name: 'city', type: TYPES.VarChar, value: info.city});
+	p.push({name: 'country', type: TYPES.VarChar, value: info.country});
+	p.push({name: 'phone', type: TYPES.VarChar, value: info.phone});
+	p.push({name: 'cellular', type: TYPES.VarChar, value: info.cellular});
+	p.push({name: 'mail', type: TYPES.VarChar, value: info.mail});
+	p.push({name: 'credit', type: TYPES.VarChar, value: info.credit});
+	return p;
+}
+
 function completeRegistration(username, fav, ques, ans) {
-	var connection = new Connection(config);
-	connection.on('connect', function(err) {
-        if (err) {
-            console.log(err)
-            next(err);
-        }
-        else {
-			let favQuery = [], quesQuery = [];
-			for(let i = 0; i < fav.length; i++)
-				favQuery.push(`(@username, '${fav[i]}')`);
-			for(let i = 0; i < ques.length; i++)
-				quesQuery.push(`(@username, '${ques[i]}', '${ans[i]}')`);
+	let favQuery = [], quesQuery = [];
+	for(let i = 0; i < fav.length; i++)
+		favQuery.push(`(@username, '${fav[i]}')`);
+	for(let i = 0; i < ques.length; i++)
+		quesQuery.push(`(@username, '${ques[i]}', '${ans[i]}')`);
 
-			let request = new Request(
-                `INSERT INTO UserCategories (UserID, CategoryID) VALUES ${favQuery.join(',')};
-				INSERT INTO UserQuestions (UserID, QuesID, Answer) VALUES ${quesQuery.join(',')};`,
-                function(err, rowCount, rows) {
-                    if(err) {
-						console.log(err);
-                    }
-                }
-            );
-
-			request.addParameter('username', TYPES.VarChar, username);
-			connection.execSql(request);
-		}
-	});
+	let query = `INSERT INTO UserCategories (UserID, CategoryID) VALUES ${favQuery.join(',')};
+				 INSERT INTO UserQuestions (UserID, QuesID, Answer) VALUES ${quesQuery.join(',')};`;
+    let params = [{name: 'username', type: TYPES.VarChar, value: username}];
+    
+    utils.Select(query, params).catch(err => console.log(err));
 };
 
 module.exports = router;

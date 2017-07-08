@@ -1,7 +1,5 @@
-var Connection = require('tedious').Connection;
-var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
-var config = require('../utils/dbConfig');
+var utils = require('../utils/dbUtils');
 var check = require('../utils/typeCheck');
 var consts = require('../utils/consts');
 var express = require('express');
@@ -28,71 +26,40 @@ function checkParams(username, password) {
 }
 
 function login(username, password, res, next) {
-    var connection = new Connection(config);
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err)
-            next(err);
+    let query = 'SELECT UserID FROM Users WHERE UserID=@username AND Password=@password;';
+    let params = [{name: 'username', type: TYPES.VarChar, value: username}, 
+                  {name: 'password', type: TYPES.VarChar, value: password}];
+    
+    utils.Select(query, params).then(function(ans) {
+        let rowCount = ans.count;
+        let rows = ans.rows;
+
+        if(rowCount) {
+            actuallyLogin(username, res, next);
         }
         else {
-            request = new Request (
-                `SELECT UserID FROM Users WHERE UserID=@username AND Password=@password;`,
-                function(err, rowCount, rows) {
-                    if(!err) {
-                        if(rowCount) {
-                            actuallyLogin(username, res, next);
-                        }
-                        else {
-                            res.status(200).json({success: false, msg: 'Username or password are incorrect'});
-                        }
-                    }
-                    else {
-						console.log(err)
-                        next(err);
-                    }
-                }
-            );
-
-            request.addParameter('username', TYPES.VarChar, username);
-            request.addParameter('password', TYPES.VarChar, password);
-            connection.execSql(request);
+            res.status(200).json({success: false, msg: 'Username or password are incorrect'});
         }
-    });
+    }).catch(next);
 };
 
 function actuallyLogin(username, res, next) {
-    var connection = new Connection(config);
-    connection.on('connect', function(err) {
-        if (err) {
-            console.log(err)
-            next(err);
+    let query = `UPDATE Users SET LogedIn=1 WHERE UserID=@username;
+                 SELECT FirstName, LastName FROM Users WHERE UserID=@username;`;
+    let params = [{name: 'username', type: TYPES.VarChar, value: username}];
+    
+    utils.Select(query, params).then(function(ans) {
+        let rowCount = ans.count;
+        let rows = ans.rows;
+
+        if(rowCount) {
+            let row = rows[0];
+            res.status(200).json({success: true, msg: 'success', firstname: row[0].value, lastname: row[1].value});
         }
         else {
-            request = new Request(
-                `UPDATE Users SET LogedIn=1 WHERE UserID=@username1;
-                SELECT FirstName, LastName FROM Users WHERE UserID=@username2;`,
-                function(err, rowCount, rows) {
-                    if(!err) {
-                        if(rowCount) {
-                            let row = rows[0];
-                            res.status(200).json({success: true, msg: 'success', firstname: row[0].value, lastname: row[1].value});
-                        }
-                        else {
-                            next(new Error('Login failed'));
-                        }
-                    }
-                    else {
-						console.log(err)
-                        next(err);
-                    }
-                }
-            );
-
-            request.addParameter('username1', TYPES.VarChar, username);
-            request.addParameter('username2', TYPES.VarChar, username);
-            connection.execSql(request);
+            next(new Error('Login failed'));
         }
-    });
+    }).catch(next);
 };
 
 module.exports = router;
