@@ -27,19 +27,18 @@ var makeOrder = require('./routes/makeOrder');
 
 var app = express();
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+// // view engine setup
+// app.set('views', path.join(__dirname, 'views'));
+// app.set('view engine', 'jade');
 
 app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-//app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 //no login needed
-app.use('/', index);
 app.use('/GetAllQuestions', getAllQues)
 app.use('/Trending5', trending);
 app.use('/Register', register);
@@ -53,19 +52,25 @@ app.use('/SearchByCompanyName', getGbyCN);
 app.use('/GetGame', getGbyID);
 
 //login needed
-app.use(function(req, res, next) {
-    let username = req.body.username;
-    if(check.checkUsername(username))
-        res.status(400).json({success: false, msg: 'Illegal username'});
-    if(!db.isLogedIn(username))
-        res.status(400).json({success: false, msg: 'User is not logged in'});
-    next();
-});
+// app.use(function(req, res, next) {
+//     let username = req.body.username;
+//     if(check.checkUsername(username))
+//         res.status(400).json({success: false, msg: 'Illegal username'});
+//     if(!db.isLogedIn(username))
+//         res.status(400).json({success: false, msg: 'User is not logged in'});
+//     next();
+// });
 
-app.use('/GetRecommendedGames', getRecommended);
-app.use('/GetUserOrders', getUserOrders);
-app.use('/GetUserOrder', getUserOrder);
+// app.use('/GetRecommendedGames', getRecommended);
+// app.use('/GetUserOrders', getUserOrders);
+// app.use('/GetUserOrder', getUserOrder);
 app.use('/MakeOrder', makeOrder);
+
+app.use('/', (req, res) => {
+    let path = __dirname + '/app/index.html';
+    console.log(path);
+    res.sendFile(path);
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
