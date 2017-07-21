@@ -9,10 +9,16 @@ router.post('/', function(req, res, next) {
     let date = req.body.shippingDay;
     let curr = req.body.currency;
 
-    var d = new Date();
-    d.setDate(d.getDate() + 7);
-    if(date - d.getTime() / 1000 < 0) {
-        res.status(400).json({success: false, msg: 'Shipping date must be at least a week later'});
+    let intDate = parseInt(date);
+    if(intDate) {
+        var d = new Date();
+        d.setDate(d.getDate() + 7);
+        if(intDate - d.getTime() / 1000 <= 0) {
+            res.status(400).json({success: false, msg: 'Shipping date must be at least a week later'});
+            return;
+        }
+    } else {
+        res.status(400).json({success: false, msg: 'Shipping date must be integer in epoch format'});
         return;
     }
 
@@ -31,85 +37,138 @@ router.post('/', function(req, res, next) {
         return;
     }
 
-    let pRes = checkProducts(prods);
-    if(!pRes.bool) {
-        res.status(400).json({success: false, msg: pRes.msg});
+    if (!checkProducts(prods, res))
         return;
-    }
 
-    utils.Select(pRes.q, pRes.p).then(function(ans) {
-        let rowCount = ans.count;
-        let rows = ans.rows;
-
-        if(rowCount) {
-            let row = rows[0];
-            if(row[0].value !== prods.length) {
-                res.status(200).json({success: false, msg: 'Game doesn\'t exist'});
-                return false;
-            } else return true;
-        }
-    }).catch(next).then((ans) => {
-        if (!ans)
-            return;
-        res.status(200).json({success: true, msg: 'Moaad Shut Up!'});
-    });
-
-    // finishOrder(uid, prods, date, curr, res, next);
+    reserveProducts(uid, prods, intDate, curr, res, next);
 });
 
-function checkProducts(prods) {
+function checkProducts(prods, res) {
     let idP = '';
     for(let i = 0; i < prods.length; i++) {
         if(prods[i] !== null && typeof prods[i] === 'object') {
-            if(!prods[i].hasOwnProperty('gameId') || !prods[i].hasOwnProperty('quantity'))
-                return {bool: false, msg: `Missing property in game: index=${i}`};
-
-            idP += `, @id${i}`;
-            // if(!db.isGame(prods[i].gameId))
-            //     return `Game ${prods[i].gameId} doesn't exist`;
-            // if(!db.inStock(prods[i].gameId, prods[i].quantity))
-            //     return `Game ${prods[i].gameId} quantity isn't in stock`
+            if(!prods[i].hasOwnProperty('gameId') || !prods[i].hasOwnProperty('quantity')) {
+                res.status(400).json({success: false, msg: `Missing property in game: index=${i}`});
+                return false;
+            } else if (!parseInt(prods[i]['quantity']) || !parseInt(prods[i]['gameId'])) {
+                res.status(400).json({success: false, msg: `Wrong property type: index=${i}`});
+                return false;
+            } else if (parseInt(prods[i]['quantity']) <= 0) {
+                res.status(400).json({success: false, msg: `Quantity must be more than 0: index=${i}`});
+                return false;
+            }
+        } else {
+            res.status(400).json({success: false, msg: `Wrong game type: index=${i}`});
+            return false;
         }
-        else return {bool: false, msg: `Wrong game type: index=${i}`};
     }
-
-    var query = `select count(gameid) as count from games where gameid in ('-1'${idP});`;
-    var params = [];
-    for(let i = 0; i < prods.length; i++) 
-        params.push({name: `id${i}`, type: TYPES.Int, value: prods[i].gameId});
-
-    return {bool: true, q: query, p: params};
+    return true;
 };
 
-function finishOrder(uid, prods, shippingDate, curr, res, next) {
-    let total = calcTotalAmount(prods);
-    let orderDate = new Date().getTime() / 1000;
-    let oid = db.addOrder(uid, orderDate, shippingDate, curr, total);
-    updateProducts(prods, oid);
-
-    res.status(200).json({success: true, msg: 'success', order: {id: oid, products: prods, shippingDay: shippingDate, currency: curr, totalAmount: total}});
-};
-
-function calcTotalAmount(prods) {
-    let idP = '';
-    for(let i = 0; i < prods.length; i++)
-        idP += `, @id${i}`;
-    let query = `select sum(price) as price from games where gameid in ('-1'${idP});`;
-
+function reserveProducts(uid, prods, date, curr, res, next) {
+    let promises = [];
+    let outOfStock = [];
+    let inStock = [];
     
-    let total = 0;
-    for(let i = 0; i < prods.length; i++) {
-        let p = db.getGamePrice(prods[i].gameId);
-        total += p * prods[i].quantity;
+    for (let i = 0; i < prods.length; i++) {
+        let query = 'UPDATE GAMES SET StokAmount = StokAmount - @quan WHERE gameid = @gid AND StokAmount >= @quan;';
+        let params = [{name: 'quan', type: TYPES.Int, value: prods[i].quantity},
+                      {name: 'gid', type: TYPES.Int, value: prods[i].gameId}];
+        
+        promises.push(
+            utils.Select(query, params).then((ans) => {
+                if (ans.count)
+                    inStock.push({gameId: prods[i].gameId, quantity: prods[i].quantity});
+                else
+                    outOfStock.push(prods[i].gameId);
+            })
+        );
     }
-    return total;
-};
 
-function updateProducts(prods, oid) {
-    for(let i = 0; i < prods.length; i++) {
-        db.reduceStockAmount(prods[i].gameId, prods[i].quantity);
-        db.addOrderProduct(oid, prods[i].gameId, prods[i].quantity);
+    Promise.all(promises).then(() => {
+        if (outOfStock.length > 0) {
+            res.status(200).json({success: false, msg: 'Games out of stock', games: outOfStock});
+            freeProducts(inStock);
+        } else {
+            completeReservation(uid, prods, date, curr, res, next);
+        }
+    }).catch((err) => {
+        freeProducts(inStock);
+        next(err);
+    });
+}
+
+function freeProducts(inStock) {
+    let query = '';
+    let params = [];
+    for (let i = 0; i < inStock.length; i++) {
+        query += `UPDATE GAMES SET StokAmount = StokAmount + @quan${i} WHERE gameid = @gid${i};`;
+        params.push({name: `gid${i}`, type: TYPES.Int, value: inStock[i].gameId}); 
+        params.push({name: `quan${i}`, type: TYPES.Int, value: inStock[i].quantity});
     }
-};
+    utils.Select(query, params).catch(next);
+}
+
+function completeReservation(uid, prods, date, curr, res, next) {
+    getTotalPrice(prods).then((price) => {
+        if(curr === 'dollar')
+            price = Math.floor(price /= 4);
+        let currDate = Math.floor(new Date().getTime() / 1000);
+        let query = `insert into orders values (@uid, '${currDate}', @date, @curr, '${price}', '0');
+                    SELECT SCOPE_IDENTITY() as id;`;
+        let params = [{name: 'uid', type: TYPES.VarChar, value: uid},
+                    {name: 'date', type: TYPES.Int, value: date},
+                    {name: 'curr', type: TYPES.VarChar, value: curr}];
+
+        return utils.Select(query, params).then((ans) => {
+            let orderId = ans.rows[0][0].value;
+            return [orderId, price];
+        });
+    }).then(([orderID, price]) => {
+        let q = [];
+        let params = [];
+        for (let i = 0; i < prods.length; i++) {
+            q.push(`(${orderID}, @gid${i}, @quan${i})`);
+            params.push({name: `gid${i}`, type: TYPES.Int, value: prods[i].gameId});
+            params.push({name: `quan${i}`, type: TYPES.Int, value: prods[i].quantity});
+        }
+
+        let query = `insert into GamesInOrders values ${q.join(',')};`;
+        return utils.Select(query, params).then((ans) => {
+            res.status(200).json({
+                success: true, 
+                msg: 'success', 
+                orderId: orderID, 
+                price: price, 
+                products: prods, 
+                date: date, 
+                currency: curr
+            });
+        });
+    }).catch((err) => {
+        freeProducts(prods);
+        next(err);
+    });
+}
+
+function getTotalPrice(prods) {
+    let promises = [];
+    let sum = 0;
+    for (let i = 0; i < prods.length; i++) {
+        let query = `Select Price from games where gameid = @id;`;
+        let param = [{name: `id`, type: TYPES.Int, value: prods[i].gameId}];
+
+        promises.push(
+            utils.Select(query, param).then((ans) => {
+                let price = ans.rows[0][0].value;
+                sum += price * prods[i].quantity;
+            })
+        );
+    }
+
+    return Promise.all(promises).then(() => {
+        return sum;
+    });
+}
 
 module.exports = router;
