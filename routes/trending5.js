@@ -9,12 +9,13 @@ router.get('/', function(req, res, next) {
 });
 
 function getTrending5(ts, res, next) {
-    let query = `SELECT TOP 5 GameID
-				 FROM Orders LEFT JOIN GamesInOrders
-				 ON Orders.OrderID = GamesInOrders.OrderID
-				 WHERE ShipmentDate > ${ts}
-				 GROUP BY GameID
-				 ORDER BY COUNT(GameID) ASC;`;
+    let query = `Select gameid, GameTitle, PosterURL, Price from games where gameid in (
+			SELECT TOP 5 GameID
+			FROM Orders LEFT JOIN GamesInOrders
+			ON Orders.OrderID = GamesInOrders.OrderID
+			WHERE ShipmentDate > ${ts}
+			GROUP BY GameID
+			ORDER BY COUNT(GameID) ASC);`;
     
     utils.Select(query, []).then(function(ans) {
         let rowCount = ans.count;
@@ -27,8 +28,8 @@ function getTrending5(ts, res, next) {
                 var game = {
                     id: row[0].value,
                     title: row[1].value,
-                    posterURL: row[5].value,
-                    price: row[8].value
+                    posterURL: row[2].value,
+                    price: row[3].value
                 };
                 games.push(game);
             }

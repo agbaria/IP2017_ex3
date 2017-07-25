@@ -1,12 +1,11 @@
 var config = {
-  userName: 'agbaria',
-  password: 'khalefA2',
-  server: 'ip2017ex3.database.windows.net',
-  options: {
-      database: 'IP2017EX3DB',
-      rowCollectionOnRequestCompletion: true,
-      encrypt: true
-  }
+	userName: process.env.username,
+	password: process.env.password,
+	server: process.env.server,
+	options: {
+		database: process.env.database,
+		encrypt: true
+	}
 };
 
 module.exports = config;
