@@ -53,13 +53,27 @@ function actuallyLogin(username, res, next) {
         let rows = ans.rows;
 
         if(rowCount) {
+            let salt = Math.floor(Math.random() * 10000);
+            let token = hash(username + salt);
+            res.app.get('tokens').username = token;
+
             let row = rows[0];
-            res.status(200).json({success: true, msg: 'success', firstname: row[0].value, lastname: row[1].value});
+            res.status(200).json({success: true, msg: 'success', token: token, firstname: row[0].value, lastname: row[1].value});
         }
         else {
             next(new Error('Login failed'));
         }
     }).catch(next);
 };
+
+function hash(str) {
+    let hash = 0, chr;
+    for (let i = 0; i < str.length; i++) {
+        chr = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return "" + hash;
+}
 
 module.exports = router;

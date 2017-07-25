@@ -24,9 +24,13 @@ var getRecommended = require('./routes/getRecommendedGames');
 var getUserOrders = require('./routes/getUserOrders');
 var getUserOrder = require('./routes/getUserOrder');
 var makeOrder = require('./routes/makeOrder');
+var finishOrder = require('./routes/finishOrder');
+var logout = require('./routes/logout');
 
 var app = express();
 
+var tokens = new Object();
+app.set('tokens', tokens);
 // // view engine setup
 // app.set('views', path.join(__dirname, 'views'));
 // app.set('view engine', 'jade');
@@ -37,6 +41,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+//request homepage
+app.use('/', (req, res, next) => {
+    if(req.originalUrl === '/') {
+        let path = __dirname + '/app/index.html';
+        res.status(200).sendFile(path);
+    } else next();
+});
 
 //no login needed
 app.use('/GetAllQuestions', getAllQues)
@@ -52,25 +64,29 @@ app.use('/SearchByCompanyName', getGbyCN);
 app.use('/GetGame', getGbyID);
 
 //login needed
-// app.use(function(req, res, next) {
-//     let username = req.body.username;
-//     if(check.checkUsername(username))
-//         res.status(400).json({success: false, msg: 'Illegal username'});
-//     if(!db.isLogedIn(username))
-//         res.status(400).json({success: false, msg: 'User is not logged in'});
-//     next();
-// });
+app.use(function(req, res, next) {
+    if(req.originalUrl === '/MakeOrder'
+    || req.originalUrl === '/FinishOrder') {
+
+        let username = req.body.username;
+        let userToken = req.body.token;
+        if (username && userToken) {
+            if(check.checkUsername(username))
+                res.status(400).json({success: false, msg: 'Illegal username'});
+            else if (app.get('tokens').username !== userToken)
+                res.status(401).json({success: false, msg: 'Incorrect user token'});
+            else next();
+        } else 
+            res.status(400).json({success: false, msg: 'No username or token in request'});
+    } else next();
+});
 
 // app.use('/GetRecommendedGames', getRecommended);
 // app.use('/GetUserOrders', getUserOrders);
 // app.use('/GetUserOrder', getUserOrder);
 app.use('/MakeOrder', makeOrder);
-
-app.use('/', (req, res) => {
-    let path = __dirname + '/app/index.html';
-    console.log(path);
-    res.sendFile(path);
-});
+app.use('/FinishOrder', finishOrder);
+app.use('/Logout', logout);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
