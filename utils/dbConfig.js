@@ -1,9 +1,9 @@
 var config = {
-	userName: 'agbaria',
-	password: 'asdasd',
-	server: 'ip2017ex3.database.windows.net',
+	userName: process.env.username,
+	password: process.env.password,
+	server: process.env.server,
 	options: {
-		database: 'IP2017EX3DB',
+		database: process.env.database,
 		encrypt: true
 	}
 };
