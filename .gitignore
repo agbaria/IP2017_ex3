@@ -30,6 +30,5 @@ node_modules
 npm-debug.log
 
 # database connection configuration
-# utils/dbConfig.js
 
 .vscode
