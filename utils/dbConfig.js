@@ -9,4 +9,6 @@ var config = {
 	}
 };
 
+console.log(process.env.username)
+
 module.exports = config;
