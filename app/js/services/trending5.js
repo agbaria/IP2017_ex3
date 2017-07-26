@@ -1,9 +1,12 @@
-app.factory('trending5', ['$http', ($http) => {
-	return $http.get('https://ip2017-games-store.herokuapp.com/Trending5')
-		.success((data) => {
-			return data;
+app.factory('trending5', ['$http', function($http) {
+	return $http({
+			method: 'GET',
+			url: 'https://ip2017-games-store.herokuapp.com/Trending5'
 		})
-		.error((err) => {
+		.then((data) => {
+			return data.data;
+		})
+		.catch((err) => {
 			return err;
 		})
 }]);

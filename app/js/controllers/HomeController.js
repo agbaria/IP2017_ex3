@@ -1,5 +1,5 @@
 app.controller('HomeController', ['$scope', 'trending5', function($scope, trending) {
-	trending.success((data) => {
+	trending.then((data) => {
 		if (data.success) {
 			$scope.trending = data.games;
 		} else {
